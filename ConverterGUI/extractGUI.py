@@ -2,7 +2,9 @@ import pandas as pd
 import numpy as np
 from openpyxl import load_workbook
 import re
-
+import datetime
+import time
+import numpy as np
 # #list of word to check with regex for OS
 # listOS=["IBM","Windows", "OPen SUSE","VMWare","Linux","Solaris","Red Hat","Centos","RedHat",
 # "AIX","Z/OS","Win","RHEL","v5r4","v6r1", "OS400","OS390","OS/400","V7R","ZOS","AS400","V5R3","V7 R1"]
@@ -30,8 +32,7 @@ def formatExcel(path,dictFilter,sheetName,colName):
     writer.close()
 
     # print(list(data))
-    data[colName]=iterateReplaceWord(data,dictFilter,colName)
-
+    data[colName],updateRecord=iterateReplaceWord(data,dictFilter,colName,path)
     #process to write excel
     book = load_workbook(path)
    
@@ -41,20 +42,44 @@ def formatExcel(path,dictFilter,sheetName,colName):
     data.to_excel(writer, sheetName, index=False)
     writer.save()
 
+    with open("{0} log.txt".format(newPath), "a") as txt_file:
+        for i in range(len(updateRecord)):
+            if i ==0:
+                txt_file.write("\n")
+            txt_file.write(str(updateRecord[i]) + "\n") # works with any number of elements in a line
 
 
 
 
-def iterateReplaceWord(data,dictFilter,colName):
+
+def iterateReplaceWord(data,dictFilter,colName,path):
     updatedData=[]
+    updateRecord=[]
+    # current_time=datetime.datetime.now()
+    # time.strftime('%l:%M%p %Z on %b %d, %Y')
+    updateRecord.append(    time.ctime() )# 'Mon Oct 18 13:35:29 2010'
+
+    updateRecord.append(path)
+
+    print("dict: ",dictFilter)
+
     #iterate row by row using itertuples
     for i,row in data.iterrows(): 
-        if dictFilter.get(data.at[i,colName]):
-            updatedData.append(dictFilter.get(data.at[i,colName]))
+        if data.at[i,colName] != data.at[i,colName]:
+            if dictFilter.get("<Blank>"):
+                updatedData.append(dictFilter.get("<Blank>"))
+                strReport="ID Number:{0}: Updated Previous Value: {1}, Current Value: {2}, Column Name: {3}".format(
+                    str(i+1),str("<Blank>"),dictFilter.get("<Blank>"),colName)
+                updateRecord.append(strReport)
+        elif dictFilter.get(str(data.at[i,colName])):
+            updatedData.append(dictFilter.get(str(data.at[i,colName])))
+            strReport="ID Number:{0}: Updated Previous Value: {1}, Current Value: {2}, Column Name: {3}".format(
+                str(i+1),str(data.at[i,colName]),dictFilter.get(data.at[i,colName]),colName)
+            updateRecord.append(strReport)
         else:
-            updatedData.append(data.at[i,colName])
+            updatedData.append(str(data.at[i,colName]))
     # print(value)
-    return updatedData
+    return updatedData,updateRecord
 
 def return_sheet(path):
 
@@ -86,9 +111,21 @@ def createDict(path,value,wordArray,col,sheet):
     dictFilter={}
     
     for i in wordArray:
-        newDict={i:value}
-        dictFilter.update(newDict)
-    # print("dict: ",dictFilter)
+        if i != i:
+
+            print("yes")
+            newDict={"<Blank>":value}
+            dictFilter.update(newDict)
+
+        else:
+            print(type(i))
+            if type(i)==np.int64:
+                newDict={i:int(value)}
+                dictFilter.update(newDict)
+            else:
+                newDict={str(i):value}
+                dictFilter.update(newDict)
+    print("Col",col)
     formatExcel(path,dictFilter, sheet,col)
 
 
